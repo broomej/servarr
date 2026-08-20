@@ -52,6 +52,7 @@ services:
       # once you've confirmed the tunnel works and you're ready to add qbittorrent.
       VPN_PORT_FORWARDING: on
       VPN_PORT_FORWARDING_PROVIDER: protonvpn
+      PORT_FORWARD_ONLY: on
 
     volumes:
       - ${DOCKER_VOLUMES}/gluetun/config:/gluetun
