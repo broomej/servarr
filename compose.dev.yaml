@@ -1,0 +1,50 @@
+# Dev override for the jellyfin service.
+#
+# Applied on top of compose.yaml via `docker compose -f compose.yaml -f compose.dev.yaml up -d`
+# by the Komodo `jellyfin-dev` Stack (see broomej/komodo-config/stacks/jellyfin-dev.toml).
+#
+# Override rules (Docker Compose semantics):
+#   - Scalar values (container_name, image tag, restart) are REPLACED.
+#   - Lists (ports, environment entries) are REPLACED in full — list your own.
+#   - Maps (environment, deploy.resources) are MERGED key-by-key.
+#   - Volumes are merged; bind-mount paths can be changed by re-declaring the entry.
+#
+# The point of this file is to give the dev stack:
+#   1. A different container name (so `docker ps` clearly shows prod vs dev)
+#   2. A different port on the tailnet (8097 instead of 8096)
+#   3. Its own config + cache volumes (so a breaking change can't corrupt prod jellyfin)
+#   4. The same media library mounted READ-ONLY (so dev can read, not write)
+#   5. GPU access (kept — the whole reason this dev stack exists is to test
+#      NVIDIA runtime / driver / transcode-pipeline changes safely)
+
+services:
+  jellyfin:
+    container_name: jellyfin-dev
+    ports:
+      # Prod binds 8096; dev binds 8097 on the same tailnet IP.
+      - "${TAILNET_IP}:8097:8096"
+    volumes:
+      # Separate config dir so dev DB / settings never touch prod.
+      - "${DOCKER_VOLUMES}/jellyfin-dev/config:/config"
+      # Separate cache volume so transcode temp files never collide.
+      - "jellyfin-dev-cache:/cache"
+      # Same media library, but READ-ONLY — dev jellyfin can read media to
+      # verify playback, but cannot write metadata / NFO / images back into
+      # the prod media tree. This is the key safety property of the dev env.
+      - "${SERVARR_DATA}:/data:ro"
+      - "/etc/localtime:/etc/localtime:ro"
+    environment:
+      TZ: ${TZ:-America/Los_Angeles}
+      NVIDIA_VISIBLE_DEVICES: all
+      NVIDIA_DRIVER_CAPABILITIES: compute,video,utility
+    # GPU access kept — see file header comment.
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+
+volumes:
+  jellyfin-dev-cache:

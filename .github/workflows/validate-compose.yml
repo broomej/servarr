@@ -1,0 +1,61 @@
+name: Validate compose
+
+# Validates the prod and dev compose file combinations on every PR.
+# Catches YAML syntax errors, unresolved env var references, and
+# invalid deploy.resources shapes before Komodo ever sees the change.
+
+on:
+  pull_request:
+    branches: [main, dev]
+  push:
+    branches: [main, dev]
+
+jobs:
+  validate-compose:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Validate prod compose (compose.yaml only)
+        shell: bash
+        env:
+          TAILNET_IP: 100.64.0.1
+          TZ: America/Los_Angeles
+          DOCKER_VOLUMES: /tmp/docker
+          SERVARR_DATA: /tmp/media
+        run: |
+          set -e
+          echo "==> prod: docker compose -f compose.yaml config"
+          docker compose -f compose.yaml config >/tmp/prod.compose.yaml
+          echo "  OK ($(wc -l < /tmp/prod.compose.yaml) lines)"
+
+      - name: Validate dev compose (compose.yaml + compose.dev.yaml)
+        shell: bash
+        env:
+          TAILNET_IP: 100.64.0.1
+          TZ: America/Los_Angeles
+          DOCKER_VOLUMES: /tmp/docker
+          SERVARR_DATA: /tmp/media
+        run: |
+          set -e
+          echo "==> dev: docker compose -f compose.yaml -f compose.dev.yaml config"
+          docker compose -f compose.yaml -f compose.dev.yaml config >/tmp/dev.compose.yaml
+          echo "  OK ($(wc -l < /tmp/dev.compose.yaml) lines)"
+
+      - name: Sanity-check dev overrides
+        shell: bash
+        run: |
+          set -e
+          # The dev compose must override container_name, port, and use a
+          # separate config volume — otherwise dev and prod would collide.
+          grep -q 'container_name: jellyfin-dev' /tmp/dev.compose.yaml
+          echo "  container_name overridden to jellyfin-dev"
+          grep -qE '8097:8096' /tmp/dev.compose.yaml
+          echo "  port overridden to 8097"
+          grep -qE 'jellyfin-dev/config' /tmp/dev.compose.yaml
+          echo "  config volume overridden to jellyfin-dev/config"
+          grep -qE '/data:ro' /tmp/dev.compose.yaml
+          echo "  media mounted read-only"
