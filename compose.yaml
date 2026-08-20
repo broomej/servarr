@@ -45,12 +45,12 @@ services:
       # (jellyfin on tailnet, radarr/sonarr when added). Default covers
       # Tailscale's 100.64.0.0/10 CGNAT range; override with your real LAN
       # CIDR (e.g. 192.168.1.0/24) if you're not on tailnet.
-      FIREWALL_OUTBOUND_SUBNETS: ${LAN_SUBNET:-100.64.0.0/10}
+      # FIREWALL_OUTBOUND_SUBNETS: ${LAN_SUBNET:-100.64.0.0/10}
       # Port forwarding — needed for qbittorrent to be connectable from peers.
       # Requires a ProtonVPN plan that supports port forwarding (Plus / Unlimited).
       # Off by default so the container starts cleanly on any plan; flip to "on"
       # once you've confirmed the tunnel works and you're ready to add qbittorrent.
-      VPN_PORT_FORWARDING: ${PROTONVPN_PORT_FORWARDING:-off}
+      # VPN_PORT_FORWARDING: ${PROTONVPN_PORT_FORWARDING:-off}
     volumes:
       - ${DOCKER_VOLUMES}/gluetun/config:/gluetun
       - /etc/localtime:/etc/localtime:ro
