@@ -38,7 +38,7 @@ services:
     network_mode: service:gluetun # Routes all traffic through VPN
     container_name: qbt-dev
     depends_on:
-      - gluetun-dev
+      - gluetun
     environment:
       - TZ=America/Los_Angeles
       - WEBUI_PORT=8089
