@@ -30,6 +30,7 @@ services:
       # cannot corrupt the prod tunnel config.
       - "${DOCKER_VOLUMES}/gluetun-dev/config:/gluetun"
       - "/etc/localtime:/etc/localtime:ro"
+      - "${DOCKER_VOLUMES}/gluetun-dev/wireguard/wg0.conf:/gluetun/wireguard/wg0.conf:ro"
     # Environment is inherited from compose.yaml — dev uses the same ProtonVPN
     # credentials and the same default server country. If you want to test
     # against a different country, override PROTONVPN_SERVER_COUNTRY in the
