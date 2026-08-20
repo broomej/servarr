@@ -21,8 +21,9 @@ services:
   gluetun:
     container_name: gluetun-dev
     ports:
-      # Prod gluetun binds :8089; dev binds :8089 on the same tailnet IP.
+      # Prod gluetun binds :8088; dev binds :8089 on the same tailnet IP.
       - "${TAILNET_IP}:8089:8089"
+      - "${TAILNET_IP}:8001:8001"
     volumes:
       # Separate config dir so dev gluetun state (cached server list, keys,
       # port-forwarding leases) never touches prod. A misbehaving dev image
@@ -39,11 +40,8 @@ services:
     depends_on:
       - gluetun
     environment:
-      - TZ=America/Los_Angeles
       - WEBUI_PORT=8089
       - TORRENTING_PORT=33147
-      - PUID=1000
-      - PGID=1000
     volumes:
       - ${ZFS_POOL}/servarr/downloads-dev:/downloads
     healthcheck:
