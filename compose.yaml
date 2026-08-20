@@ -70,7 +70,7 @@ services:
     environment:
       - TZ=America/Los_Angeles
       - WEBUI_PORT=8088
-    volumes:
+    #volumes:
       #- ${CONFIG_ROOT}:/config
       #- ${DOWNLOAD_ROOT}:/downloads
     healthcheck:
