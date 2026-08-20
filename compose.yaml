@@ -40,7 +40,7 @@ services:
       WIREGUARD_PRIVATE_KEY: ${PROTONVPN_WG_PRIVATE_KEY:?PROTONVPN_WG_PRIVATE_KEY must be set}
       # Pick a P2P-friendly country (Proton tags these in their UI with a
       # double-arrow icon). Netherlands / Switzerland / Iceland are common.
-      # SERVER_COUNTRIES: ${PROTONVPN_SERVER_COUNTRY:-Netherlands}
+      SERVER_COUNTRIES: ${PROTONVPN_SERVER_COUNTRY:-Netherlands}
       # Allow gluetun-networked containers to reach LAN-side services
       # (jellyfin on tailnet, radarr/sonarr when added). Default covers
       # Tailscale's 100.64.0.0/10 CGNAT range; override with your real LAN
