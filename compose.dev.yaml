@@ -34,6 +34,18 @@ services:
     # credentials and the same default server country. If you want to test
     # against a different country, override PROTONVPN_SERVER_COUNTRY in the
     # dev .env file rather than hardcoding here.
+  qbt:
+    network_mode: service:gluetun-dev # Routes all traffic through VPN
+    depends_on:
+      - gluetun-dev
+    environment:
+      - TZ=America/Los_Angeles
+      - WEBUI_PORT=8089
+      - TORRENTING_PORT=33147
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://127.0.0.1:8089", "https://google.com"]
+      interval: 1m
+      retries: 10
 
   jellyfin:
     container_name: jellyfin-dev
