@@ -21,9 +21,8 @@ services:
   gluetun:
     container_name: gluetun-dev
     ports:
-      # Prod gluetun binds :8000; dev binds :8001 on the same tailnet IP.
-      # Same control API inside the container (target port 8000 unchanged).
-      # - "${TAILNET_IP}:8001:8000"
+      # Prod gluetun binds :8089; dev binds :8089 on the same tailnet IP.
+      - "${TAILNET_IP}:8089:8089"
     volumes:
       # Separate config dir so dev gluetun state (cached server list, keys,
       # port-forwarding leases) never touches prod. A misbehaving dev image
