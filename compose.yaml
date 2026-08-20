@@ -50,7 +50,7 @@ services:
       # Requires a ProtonVPN plan that supports port forwarding (Plus / Unlimited).
       # Off by default so the container starts cleanly on any plan; flip to "on"
       # once you've confirmed the tunnel works and you're ready to add qbittorrent.
-      VPN_PORT_FORWARDING: ${PROTONVPN_PORT_FORWARDING:-off}
+      VPN_PORT_FORWARDING: on
     volumes:
       - ${DOCKER_VOLUMES}/gluetun/config:/gluetun
       - /etc/localtime:/etc/localtime:ro
