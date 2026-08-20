@@ -53,6 +53,7 @@ services:
       VPN_PORT_FORWARDING: on
     volumes:
       - ${DOCKER_VOLUMES}/gluetun/config:/gluetun
+      - ${ZFS_POOL}/servarr/downloads:/downloads
       - /etc/localtime:/etc/localtime:ro
     # No /data mount — gluetun is a network appliance, it doesn't see media.
     healthcheck:
