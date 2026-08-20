@@ -65,3 +65,4 @@ docker compose -p jellyfin-dev -f compose.yaml -f compose.dev.yaml up -d
 ```
 
 Note: this requires the same env vars (`TAILNET_IP`, `DOCKER_VOLUMES`, `SERVARR_DATA`, `TZ`) to be set. Use `127.0.0.1` for `TAILNET_IP` if you're not on a tailnet.
+# smoke test Wed Aug 19 09:01:57 PM PDT 2026
