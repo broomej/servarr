@@ -1,4 +1,67 @@
 services:
+  # ─────────────────────────────────────────────────────────────────────
+  # VPN egress layer.
+  #
+  # Gluetun is the network namespace every torrent-related container should
+  # attach to via `network_mode: service:gluetun`. The pattern:
+  #
+  #   1. Gluetun establishes a WireGuard tunnel to ProtonVPN.
+  #   2. Any container that needs to egress via VPN inherits gluetun's
+  #      network namespace (no IP of its own).
+  #   3. Web UIs for those containers are published on gluetun's `ports:`
+  #      list, because the dependent container has no network to publish on.
+  #
+  # Verification (do this before wiring up qbittorrent):
+  #   docker exec gluetun wget -qO- https://am.i.mullvad.net/json | jq
+  #   → confirm `ip` is a ProtonVPN exit, not your home IP.
+  #   docker stop gluetun
+  #   → confirm dependent containers lose internet entirely (kill switch).
+  # ─────────────────────────────────────────────────────────────────────
+  gluetun:
+    image: qmcgaw/gluetun:latest
+    container_name: gluetun
+    restart: unless-stopped
+    cap_add:
+      - NET_ADMIN
+    devices:
+      - /dev/net/tun:/dev/net/tun
+    ports:
+      # Gluetun control + healthcheck API. Future VPN-routed services
+      # (qbittorrent web UI on 8080, etc.) will publish their ports here too.
+      - "${TAILNET_IP}:8000:8000"
+    environment:
+      TZ: ${TZ:-America/Los_Angeles}
+      VPN_SERVICE_PROVIDER: ${VPN_SERVICE_PROVIDER:-protonvpn}
+      VPN_TYPE: wireguard
+      # ProtonVPN WireGuard credentials — extract from the .conf downloaded
+      # from Proton's account portal: Downloads → WireGuard configuration.
+      # The `PrivateKey =` line goes in PROTONVPN_WG_PRIVATE_KEY.
+      # Use Komodo secrets / a gitignored .env — never commit this key.
+      WIREGUARD_PRIVATE_KEY: ${PROTONVPN_WG_PRIVATE_KEY:?PROTONVPN_WG_PRIVATE_KEY must be set}
+      # Pick a P2P-friendly country (Proton tags these in their UI with a
+      # double-arrow icon). Netherlands / Switzerland / Iceland are common.
+      SERVER_COUNTRIES: ${PROTONVPN_SERVER_COUNTRY:-Netherlands}
+      # Allow gluetun-networked containers to reach LAN-side services
+      # (jellyfin on tailnet, radarr/sonarr when added). Default covers
+      # Tailscale's 100.64.0.0/10 CGNAT range; override with your real LAN
+      # CIDR (e.g. 192.168.1.0/24) if you're not on tailnet.
+      FIREWALL_OUTBOUND_SUBNETS: ${LAN_SUBNET:-100.64.0.0/10}
+      # Port forwarding — needed for qbittorrent to be connectable from peers.
+      # Requires a ProtonVPN plan that supports port forwarding (Plus / Unlimited).
+      # Off by default so the container starts cleanly on any plan; flip to "on"
+      # once you've confirmed the tunnel works and you're ready to add qbittorrent.
+      VPN_PORT_FORWARDING: ${PROTONVPN_PORT_FORWARDING:-off}
+    volumes:
+      - ${DOCKER_VOLUMES}/gluetun/config:/gluetun
+      - /etc/localtime:/etc/localtime:ro
+    # No /data mount — gluetun is a network appliance, it doesn't see media.
+    healthcheck:
+      test: ["CMD-SHELL", "wget --quiet --tries=1 --spider http://localhost:8000/v1/healthcheck || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+
   jellyfin:
     image: jellyfin/jellyfin:latest
     container_name: jellyfin

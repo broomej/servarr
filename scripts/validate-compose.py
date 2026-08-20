@@ -3,11 +3,11 @@
 
 Runs `docker compose config` for both the prod baseline and the merged dev
 override, then asserts the dev override actually does what it claims to:
-  - container_name overridden to `jellyfin-dev`
-  - port overridden to published=8097, target=8096
-  - config volume points to jellyfin-dev/config
-  - media mount (/data) is read-only
-  - NVIDIA GPU passthrough still attached
+  - jellyfin: container_name overridden to `jellyfin-dev`, port to 8097→8096,
+    config volume points to jellyfin-dev/config, media mount read-only,
+    NVIDIA GPU still attached.
+  - gluetun: container_name overridden to `gluetun-dev`, control port to
+    8001→8000, config volume points to gluetun-dev/config.
 
 Handles BOTH short-form and long-form output from `docker compose config`,
 because docker compose normalizes short-form syntax (e.g. `IP:8097:8096`)
@@ -26,12 +26,17 @@ import sys
 from pathlib import Path
 
 # Stand-in env vars so `docker compose config` can resolve ${VAR} references
-# even on a CI runner that doesn't have the real homelab paths.
+# even on a CI runner that doesn't have the real homelab paths or ProtonVPN
+# credentials. PROTONVPN_WG_PRIVATE_KEY is required by compose.yaml (via the
+# `${VAR:?error}` syntax) so we set a dummy value here — it never gets used
+# because `docker compose config` only renders the config, doesn't start the
+# container.
 ENV = {
     "TAILNET_IP": "100.64.0.1",
     "TZ": "America/Los_Angeles",
     "DOCKER_VOLUMES": "/tmp/docker",
     "SERVARR_DATA": "/tmp/media",
+    "PROTONVPN_WG_PRIVATE_KEY": "ci-dummy-key-not-real",
     "PATH": os.environ.get("PATH", "/usr/bin:/bin"),
 }
 
@@ -179,6 +184,38 @@ def main() -> int:
         "NVIDIA GPU still attached",
         has_nvidia_gpu(jelly),
         "deploy.resources.reservations.devices has no nvidia/gpu entry",
+    )
+
+    # ── Gluetun dev override checks ──────────────────────────────────────
+    # Same pattern as jellyfin: prod binds :8000, dev binds :8001 on the same
+    # tailnet IP, and dev gets its own config dir so tunnel state is isolated.
+    print("\n=== Gluetun dev override checks ===")
+    glue = dev.get("services", {}).get("gluetun", {})
+    if not glue:
+        print("  FAIL  no 'gluetun' service in merged dev compose")
+        return 1
+
+    all_ok &= assert_check(
+        "gluetun container_name overridden to gluetun-dev",
+        glue.get("container_name") == "gluetun-dev",
+        f"got: {glue.get('container_name')!r}",
+    )
+    all_ok &= assert_check(
+        "gluetun control port overridden to published=8001, target=8000",
+        check_port(glue.get("ports"), 8001, 8000),
+        f"got: {glue.get('ports')!r}",
+    )
+    all_ok &= assert_check(
+        "gluetun config volume overridden to gluetun-dev/config",
+        check_volume(glue.get("volumes"), "/gluetun", source_contains="gluetun-dev"),
+        f"got: {glue.get('volumes')!r}",
+    )
+    # Sanity: dev gluetun should NOT mount /data — it's a network appliance,
+    # not a media consumer. If someone adds the mount by mistake, catch it.
+    all_ok &= assert_check(
+        "gluetun does NOT mount /data (network appliance, no media access)",
+        not check_volume(glue.get("volumes"), "/data"),
+        "gluetun should not see the media library — check compose.dev.yaml",
     )
 
     print()

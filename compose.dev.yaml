@@ -18,6 +18,23 @@
 #      NVIDIA runtime / driver / transcode-pipeline changes safely)
 
 services:
+  gluetun:
+    container_name: gluetun-dev
+    ports:
+      # Prod gluetun binds :8000; dev binds :8001 on the same tailnet IP.
+      # Same control API inside the container (target port 8000 unchanged).
+      - "${TAILNET_IP}:8001:8000"
+    volumes:
+      # Separate config dir so dev gluetun state (cached server list, keys,
+      # port-forwarding leases) never touches prod. A misbehaving dev image
+      # cannot corrupt the prod tunnel config.
+      - "${DOCKER_VOLUMES}/gluetun-dev/config:/gluetun"
+      - "/etc/localtime:/etc/localtime:ro"
+    # Environment is inherited from compose.yaml — dev uses the same ProtonVPN
+    # credentials and the same default server country. If you want to test
+    # against a different country, override PROTONVPN_SERVER_COUNTRY in the
+    # dev .env file rather than hardcoding here.
+
   jellyfin:
     container_name: jellyfin-dev
     ports:
