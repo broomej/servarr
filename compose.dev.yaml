@@ -42,6 +42,8 @@ services:
       - TZ=America/Los_Angeles
       - WEBUI_PORT=8089
       - TORRENTING_PORT=33147
+      - PUID=1000
+      - PGID=1000
     healthcheck:
       test: ["CMD", "curl", "--fail", "http://127.0.0.1:8089", "https://google.com"]
       interval: 1m
