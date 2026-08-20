@@ -51,6 +51,8 @@ services:
       # Off by default so the container starts cleanly on any plan; flip to "on"
       # once you've confirmed the tunnel works and you're ready to add qbittorrent.
       VPN_PORT_FORWARDING: on
+      VPN_PORT_FORWARDING_PROVIDER: protonvpn
+
     volumes:
       - ${DOCKER_VOLUMES}/gluetun/config:/gluetun
       - ${ZFS_POOL}/servarr/downloads:/downloads
