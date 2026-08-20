@@ -1,7 +1,7 @@
-# Dev override for the jellyfin service.
+# Dev override for the servarr stack.
 #
 # Applied on top of compose.yaml via `docker compose -f compose.yaml -f compose.dev.yaml up -d`
-# by the Komodo `jellyfin-dev` Stack (see broomej/komodo-config/stacks/jellyfin-dev.toml).
+# by the Komodo `servarr-dev` Stack (see broomej/komodo-config/stacks/servarr-dev.toml).
 #
 # Override rules (Docker Compose semantics):
 #   - Scalar values (container_name, image tag, restart) are REPLACED.
