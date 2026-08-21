@@ -38,7 +38,7 @@ services:
     environment:
       #VPN_PORT_FORWARDING_UP_COMMAND: /bin/sh -c 'sleep 15; wget -O- --retry-connrefused --post-data "json={\"listen_port\":{{PORT}},\"current_network_interface\":\"{{VPN_INTERFACE}}\",\"random_port\":false,\"upnp\":false}" http://127.0.0.1:8089/api/v2/app/setPreferences'
       #VPN_PORT_FORWARDING_DOWN_COMMAND: /bin/sh -c 'wget -O- --retry-connrefused --post-data "json={\"listen_port\":0,\"current_network_interface\":\"lo\"}" http://127.0.0.1:8089/api/v2/app/setPreferences 2>&1'
-      VPN_PORT_FORWARDING: "off"
+      - VPN_PORT_FORWARDING="off"
   qbt:
     container_name: qbt-dev
     depends_on:
