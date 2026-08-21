@@ -8,15 +8,15 @@ services:
     devices:
       - /dev/net/tun:/dev/net/tun
     ports:
-      - "${TAILNET_IP}:8089:8089"
-      - "${TAILNET_IP}:8001:8000"
+      - "${TAILNET_IP}:${QBT_WEBUI_PORT}:${QBT_WEBUI_PORT}"
+      - "${TAILNET_IP}:${GT_WEBUI_PORT}:8000"
     environment:
       - TZ=${TZ:-America/Los_Angeles}
       - VPN_SERVICE_PROVIDER=custom
       - VPN_TYPE=wireguard
       #- VPN_PORT_FORWARDING_PROVIDER=protonvpn
-      #VPN_PORT_FORWARDING_UP_COMMAND: /bin/sh -c 'sleep 15; wget -O- --retry-connrefused --post-data "json={\"listen_port\":{{PORT}},\"current_network_interface\":\"{{VPN_INTERFACE}}\",\"random_port\":false,\"upnp\":false}" http://127.0.0.1:8089/api/v2/app/setPreferences'
-      #VPN_PORT_FORWARDING_DOWN_COMMAND: /bin/sh -c 'wget -O- --retry-connrefused --post-data "json={\"listen_port\":0,\"current_network_interface\":\"lo\"}" http://127.0.0.1:8089/api/v2/app/setPreferences 2>&1'
+      #VPN_PORT_FORWARDING_UP_COMMAND: /bin/sh -c 'sleep 15; wget -O- --retry-connrefused --post-data "json={\"listen_port\":{{PORT}},\"current_network_interface\":\"{{VPN_INTERFACE}}\",\"random_port\":false,\"upnp\":false}" http://127.0.0.1:${QBT_WEBUI_PORT}/api/v2/app/setPreferences'
+      #VPN_PORT_FORWARDING_DOWN_COMMAND: /bin/sh -c 'wget -O- --retry-connrefused --post-data "json={\"listen_port\":0,\"current_network_interface\":\"lo\"}" http://127.0.0.1:${QBT_WEBUI_PORT}/api/v2/app/setPreferences 2>&1'
       - VPN_PORT_FORWARDING="off"
       - VPN_PORT_FORWARDING_DOWN_COMMAND=/bin/sh -c 'wget -O- --retry-connrefused --post-data "json={\"listen_port\":0,\"current_network_interface\":\"lo\"}" http://127.0.0.1:8088/api/v2/app/setPreferences 2>&1'
       - FIREWALL_OUTBOUND_SUBNETS=100.64.0.0/10
@@ -26,7 +26,7 @@ services:
       - ${ZFS_POOL}/servarr/downloads:/downloads
       - /etc/localtime:/etc/localtime:ro
     healthcheck:
-      test: ["CMD-SHELL", "wget --quiet --tries=1 --spider http://127.0.0.1:8001/v1/healthcheck || exit 1"]
+      test: ["CMD-SHELL", "wget --quiet --tries=1 --spider http://127.0.0.1:${GT_WEBUI_PORT}/v1/healthcheck || exit 1"]
       interval: 30s
       timeout: 5s
       retries: 3
@@ -39,7 +39,7 @@ services:
       - gluetun
     environment:
       - TZ=America/Los_Angeles
-      - WEBUI_PORT=8089
+      - WEBUI_PORT=${QBT_WEBUI_PORT}
       - PUID=1000
       - PGID=1000
     volumes:
@@ -47,7 +47,7 @@ services:
       - ${ZFS_POOL}/servarr/downloads:/downloads
       - ./scripts/qbt-ensure-localhost-auth-bypass.sh:/custom-cont-init.d/00-localhost-bypass.sh:ro
     healthcheck:
-      test: ["CMD", "curl", "--fail", "http://127.0.0.1:8089", "https://google.com"]
+      test: ["CMD", "curl", "--fail", "http://127.0.0.1:${QBT_WEBUI_PORT}", "https://google.com"]
       interval: 1m
       retries: 10
     restart: unless-stopped
