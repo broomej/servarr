@@ -35,7 +35,8 @@ services:
     image: lscr.io/linuxserver/qbittorrent:latest
     container_name: qbt-dev
     network_mode: service:gluetun # Routes all traffic through VPN
-    depends_on: gluetun
+    depends_on:
+      - gluetun
     environment:
       - TZ=America/Los_Angeles
       - WEBUI_PORT=8089
