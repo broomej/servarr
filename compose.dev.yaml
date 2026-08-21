@@ -19,6 +19,7 @@
 
 services:
   gluetun:
+    label: trigger-redeploy
     container_name: gluetun-dev
     ports:
       # Prod gluetun binds :8088; dev binds :8089 on the same tailnet IP.

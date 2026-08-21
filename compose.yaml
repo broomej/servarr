@@ -1,5 +1,6 @@
 services:
   gluetun:
+    label: trigger-redeploy
     image: qmcgaw/gluetun:latest
     container_name: gluetun
     restart: unless-stopped
