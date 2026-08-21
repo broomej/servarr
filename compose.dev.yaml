@@ -21,19 +21,35 @@ services:
   gluetun:
     container_name: gluetun-dev
     ports:
-      # Prod gluetun binds :8000; dev binds :8001 on the same tailnet IP.
-      # Same control API inside the container (target port 8000 unchanged).
-      # - "${TAILNET_IP}:8001:8000"
+      # Prod gluetun binds :8088; dev binds :8089 on the same tailnet IP.
+      - "${TAILNET_IP}:8089:8089"
+      - "${TAILNET_IP}:8001:8000"
     volumes:
       # Separate config dir so dev gluetun state (cached server list, keys,
       # port-forwarding leases) never touches prod. A misbehaving dev image
       # cannot corrupt the prod tunnel config.
       - "${DOCKER_VOLUMES}/gluetun-dev/config:/gluetun"
       - "/etc/localtime:/etc/localtime:ro"
+      - "${DOCKER_VOLUMES}/gluetun-dev/wireguard/wg0.conf:/gluetun/wireguard/wg0.conf:ro"
     # Environment is inherited from compose.yaml — dev uses the same ProtonVPN
     # credentials and the same default server country. If you want to test
     # against a different country, override PROTONVPN_SERVER_COUNTRY in the
     # dev .env file rather than hardcoding here.
+    environment:
+      VPN_PORT_FORWARDING_UP_COMMAND: /bin/sh -c 'sleep 15; wget -O- --retry-connrefused --post-data "json={\"listen_port\":{{PORT}},\"current_network_interface\":\"{{VPN_INTERFACE}}\",\"random_port\":false,\"upnp\":false}" http://127.0.0.1:8089/api/v2/app/setPreferences'
+      VPN_PORT_FORWARDING_DOWN_COMMAND: /bin/sh -c 'wget -O- --retry-connrefused --post-data "json={\"listen_port\":0,\"current_network_interface\":\"lo\"}" http://127.0.0.1:8089/api/v2/app/setPreferences 2>&1'
+  qbt:
+    container_name: qbt-dev
+    depends_on:
+      - gluetun
+    environment:
+      - WEBUI_PORT=8089
+    volumes:
+      - ${DOCKER_VOLUMES}/qbt-dev/config:/config
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://127.0.0.1:8089", "https://google.com"]
+      interval: 1m
+      retries: 10
 
   jellyfin:
     container_name: jellyfin-dev
