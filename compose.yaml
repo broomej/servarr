@@ -47,6 +47,7 @@ services:
     volumes:
       - ${DOCKER_VOLUMES}/qbt/config:/config
       - ${ZFS_POOL}/servarr/downloads:/downloads
+      - ./scripts/qbt-ensure-localhost-auth-bypass.sh:/custom-cont-init.d/00-localhost-bypass.sh:ro
     healthcheck:
       test: ["CMD", "curl", "--fail", "http://127.0.0.1:8088", "https://google.com"]
       interval: 1m
