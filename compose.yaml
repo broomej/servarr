@@ -1,15 +1,15 @@
 services:
   gluetun:
     image: qmcgaw/gluetun:latest
-    container_name: gluetun
+    container_name: gluetun${DEV_FLAG}
     restart: unless-stopped
     cap_add:
       - NET_ADMIN
     devices:
       - /dev/net/tun:/dev/net/tun
     ports:
-      - "${TAILNET_IP}:8088:8088"
-      - "${TAILNET_IP}:8000:8000"
+      - "${TAILNET_IP}:${QBT_WEBUI_PORT}:${QBT_WEBUI_PORT}"
+      - "${TAILNET_IP}:${GT_WEBUI_PORT}:8000"
     environment:
       - TZ=${TZ:-America/Los_Angeles}
       - VPN_SERVICE_PROVIDER=custom
@@ -17,23 +17,23 @@ services:
       - VPN_PORT_FORWARDING=on
       - VPN_PORT_FORWARDING_PROVIDER=protonvpn
       - VPN_PORT_FORWARDING_STATUS_FILE=/tmp/gluetun/forwarded_port
-      - VPN_PORT_FORWARDING_UP_COMMAND=/bin/sh -c 'sleep 15; wget -O- --retry-connrefused --post-data "json={\"listen_port\":{{PORT}},\"current_network_interface\":\"{{VPN_INTERFACE}}\",\"random_port\":false,\"upnp\":false}" http://127.0.0.1:8088/api/v2/app/setPreferences'
-      - VPN_PORT_FORWARDING_DOWN_COMMAND=/bin/sh -c 'wget -O- --retry-connrefused --post-data "json={\"listen_port\":0,\"current_network_interface\":\"lo\"}" http://127.0.0.1:8088/api/v2/app/setPreferences 2>&1'
+      - VPN_PORT_FORWARDING_UP_COMMAND=/bin/sh -c 'sleep 15; wget -O- --retry-connrefused --post-data "json={\"listen_port\":{{PORT}},\"current_network_interface\":\"{{VPN_INTERFACE}}\",\"random_port\":false,\"upnp\":false}" http://127.0.0.1:${QBT_WEBUI_PORT}/api/v2/app/setPreferences'
+      - VPN_PORT_FORWARDING_DOWN_COMMAND=/bin/sh -c 'wget -O- --retry-connrefused --post-data "json={\"listen_port\":0,\"current_network_interface\":\"lo\"}" http://127.0.0.1:${QBT_WEBUI_PORT}/api/v2/app/setPreferences 2>&1'
       - FIREWALL_OUTBOUND_SUBNETS=100.64.0.0/10
     volumes:
-      - ${DOCKER_VOLUMES}/gluetun/config:/gluetun
+      - ${DOCKER_VOLUMES}/gluetun${DEV_FLAG}/config:/gluetun
+      - ${DOCKER_VOLUMES}/gluetun${DEV_FLAG}/wireguard/wg0.conf:/gluetun/wireguard/wg0.conf:ro
       - ${ZFS_POOL}/servarr/downloads:/downloads
       - /etc/localtime:/etc/localtime:ro
-      - ${DOCKER_VOLUMES}/gluetun/wireguard/wg0.conf:/gluetun/wireguard/wg0.conf:ro
     healthcheck:
-      test: ["CMD-SHELL", "wget --quiet --tries=1 --spider http://127.0.0.1:8000/v1/healthcheck || exit 1"]
+      test: ["CMD-SHELL", "wget --quiet --tries=1 --spider http://127.0.0.1:${GT_WEBUI_PORT}/v1/healthcheck || exit 1"]
       interval: 30s
       timeout: 5s
       retries: 3
       start_period: 30s
   qbt:
     image: lscr.io/linuxserver/qbittorrent:latest
-    container_name: qbt
+    container_name: qbt${DEV_FLAG}
     network_mode: service:gluetun # Routes all traffic through VPN
     depends_on:
       gluetun:
@@ -41,34 +41,34 @@ services:
         restart: true
     environment:
       - TZ=America/Los_Angeles
-      - WEBUI_PORT=8088
+      - WEBUI_PORT=${QBT_WEBUI_PORT}
       - PUID=1000
       - PGID=1000
     volumes:
-      - ${DOCKER_VOLUMES}/qbt/config:/config
+      - ${DOCKER_VOLUMES}/qbt${DEV_FLAG}/config:/config
       - ${ZFS_POOL}/servarr/downloads:/downloads
       - ./scripts/qbt-ensure-localhost-auth-bypass.sh:/custom-cont-init.d/00-localhost-bypass.sh:ro
     healthcheck:
-      test: ["CMD", "curl", "--fail", "http://127.0.0.1:8088", "https://google.com"]
+      test: ["CMD", "curl", "--fail", "http://127.0.0.1:${QBT_WEBUI_PORT}", "https://google.com"]
       interval: 1m
       retries: 10
     restart: unless-stopped
 
   jellyfin:
     image: jellyfin/jellyfin:latest
-    container_name: jellyfin
+    container_name: jellyfin${DEV_FLAG}
     restart: unless-stopped
     labels:
       test_deploy: "test"
     ports:
-      - "${TAILNET_IP}:8096:8096"
+      - "${TAILNET_IP}:${JF_PORT}:8096"
     environment:
       TZ: ${TZ:-America/Los_Angeles}
       NVIDIA_VISIBLE_DEVICES: all
       NVIDIA_DRIVER_CAPABILITIES: compute,video,utility
     volumes:
-      - ${DOCKER_VOLUMES}/jellyfin/config:/config
-      - jellyfin-cache:/cache
+      - ${DOCKER_VOLUMES}/jellyfin${DEV_FLAG}/config:/config
+      - jellyfin${DEV_FLAG}-cache:/cache
       - ${SERVARR_DATA}:/data
       - /etc/localtime:/etc/localtime:ro
     deploy:
@@ -80,4 +80,4 @@ services:
               capabilities: [gpu]
 
 volumes:
-  jellyfin-cache:
+  jellyfin${DEV_FLAG}-cache:
