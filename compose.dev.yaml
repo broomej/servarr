@@ -23,7 +23,7 @@ services:
     ports:
       # Prod gluetun binds :8088; dev binds :8089 on the same tailnet IP.
       - "${TAILNET_IP}:8089:8089"
-      - "${TAILNET_IP}:8001:8001"
+      - "${TAILNET_IP}:8001:8000"
     volumes:
       # Separate config dir so dev gluetun state (cached server list, keys,
       # port-forwarding leases) never touches prod. A misbehaving dev image
@@ -35,6 +35,9 @@ services:
     # credentials and the same default server country. If you want to test
     # against a different country, override PROTONVPN_SERVER_COUNTRY in the
     # dev .env file rather than hardcoding here.
+    environment:
+      VPN_PORT_FORWARDING_UP_COMMAND: /bin/sh -c 'wget -O- --retry-connrefused --post-data "json={\"listen_port\":{{PORT}},\"current_network_interface\":\"{{VPN_INTERFACE}}\",\"random_port\":false,\"upnp\":false}" http://127.0.0.1:8089/api/v2/app/setPreferences 2>&1'
+      VPN_PORT_FORWARDING_DOWN_COMMAND: /bin/sh -c 'wget -O- --retry-connrefused --post-data "json={\"listen_port\":0,\"current_network_interface\":\"lo\"}" http://127.0.0.1:8089/api/v2/app/setPreferences 2>&1'
   qbt:
     network_mode: service:gluetun # Routes all traffic through VPN
     container_name: qbt-dev
