@@ -80,4 +80,4 @@ services:
               capabilities: [gpu]
 
 volumes:
-  jellyfin${DEV_FLAG}-cache:
+  jellyfin-dev-cache:
