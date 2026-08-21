@@ -3,30 +3,15 @@
 
 ## Two environments
 
-This repo is deployed by Komodo in two configurations:
+This repo is deployed by Komodo in two configurations. Both point to the same compose file and use Komodo
+variables to deploy different stacks.
 
 | Branch | Stack in Komodo | Compose files | Port on tailnet | Container name |
 |--------|-----------------|---------------|-----------------|----------------|
 | `main` | `jellyfin`      | `compose.yaml` | `:8096`         | `jellyfin`     |
-| `dev`  | `jellyfin-dev`  | `compose.yaml` + `compose.dev.yaml` | `:8097` | `jellyfin-dev` |
+| `devel`  | `jellyfin-dev`  | `compose.yaml` | `:8097` | `jellyfin-dev` |
 
 Komodo reads the stack definitions from [`broomej/komodo-config`](https://github.com/broomej/komodo-config) via Resource Sync. Each stack points back at this repo for its compose files.
-
-## What `compose.dev.yaml` changes
-
-It is applied as a Docker Compose **override** on top of `compose.yaml`. Override semantics:
-
-| Field | Prod (`compose.yaml`) | Dev (`compose.dev.yaml` override) |
-|---|---|---|
-| `container_name` | `jellyfin` | `jellyfin-dev` |
-| `ports` | `:8096:8096` | `:8097:8096` |
-| `/config` volume | `${DOCKER_VOLUMES}/jellyfin/config` | `${DOCKER_VOLUMES}/jellyfin-dev/config` |
-| `/cache` volume  | `jellyfin-cache` (named) | `jellyfin-dev-cache` (named) |
-| `/data` volume   | `${SERVARR_DATA}` (rw) | `${SERVARR_DATA}` **read-only** |
-| GPU passthrough  | yes | yes (kept — dev exists partly to test NVIDIA changes) |
-| `gluetun` `container_name` | `gluetun` | `gluetun-dev` |
-| `gluetun` `ports` | `:8000:8000` | `:8001:8000` |
-| `gluetun` `/gluetun` config volume | `${DOCKER_VOLUMES}/gluetun/config` | `${DOCKER_VOLUMES}/gluetun-dev/config` |
 
 The most important property of the dev environment is the **read-only media mount**. Dev jellyfin can read your media library to verify playback, but it cannot write metadata, NFO files, or images back into the prod media tree. So a breaking change to metadata handling in a new image version cannot corrupt your real library. Dev gluetun similarly gets its own config directory so a botched tunnel setup can't overwrite prod's cached WireGuard state.
 
