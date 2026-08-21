@@ -36,9 +36,7 @@ services:
     container_name: qbt${DEV_FLAG}
     network_mode: service:gluetun # Routes all traffic through VPN
     depends_on:
-      gluetun:
-        condition: service_healthy
-        restart: true
+      - gluetun
     environment:
       - TZ=America/Los_Angeles
       - WEBUI_PORT=${QBT_WEBUI_PORT}
