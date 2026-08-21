@@ -1,77 +1,76 @@
-# Dev override for the servarr stack.
-#
-# Applied on top of compose.yaml via `docker compose -f compose.yaml -f compose.dev.yaml up -d`
-# by the Komodo `servarr-dev` Stack (see broomej/komodo-config/stacks/servarr-dev.toml).
-#
-# Override rules (Docker Compose semantics):
-#   - Scalar values (container_name, image tag, restart) are REPLACED.
-#   - Lists (ports, environment entries) are REPLACED in full — list your own.
-#   - Maps (environment, deploy.resources) are MERGED key-by-key.
-#   - Volumes are merged; bind-mount paths can be changed by re-declaring the entry.
-#
-# The point of this file is to give the dev stack:
-#   1. A different container name (so `docker ps` clearly shows prod vs dev)
-#   2. A different port on the tailnet (8097 instead of 8096)
-#   3. Its own config + cache volumes (so a breaking change can't corrupt prod jellyfin)
-#   4. The same media library mounted READ-ONLY (so dev can read, not write)
-#   5. GPU access (kept — the whole reason this dev stack exists is to test
-#      NVIDIA runtime / driver / transcode-pipeline changes safely)
-
 services:
   gluetun:
+    image: qmcgaw/gluetun:latest
     container_name: gluetun-dev
+    restart: unless-stopped
+    cap_add:
+      - NET_ADMIN
+    devices:
+      - /dev/net/tun:/dev/net/tun
     ports:
-      # Prod gluetun binds :8088; dev binds :8089 on the same tailnet IP.
       - "${TAILNET_IP}:8089:8089"
       - "${TAILNET_IP}:8001:8000"
-    volumes:
-      # Separate config dir so dev gluetun state (cached server list, keys,
-      # port-forwarding leases) never touches prod. A misbehaving dev image
-      # cannot corrupt the prod tunnel config.
-      - "${DOCKER_VOLUMES}/gluetun-dev/config:/gluetun"
-      - "/etc/localtime:/etc/localtime:ro"
-      - "${DOCKER_VOLUMES}/gluetun-dev/wireguard/wg0.conf:/gluetun/wireguard/wg0.conf:ro"
-    # Environment is inherited from compose.yaml — dev uses the same ProtonVPN
-    # credentials and the same default server country. If you want to test
-    # against a different country, override PROTONVPN_SERVER_COUNTRY in the
-    # dev .env file rather than hardcoding here.
     environment:
+      - TZ=${TZ:-America/Los_Angeles}
+      - VPN_SERVICE_PROVIDER=custom
+      - VPN_TYPE=wireguard
+      #- VPN_PORT_FORWARDING_PROVIDER=protonvpn
       #VPN_PORT_FORWARDING_UP_COMMAND: /bin/sh -c 'sleep 15; wget -O- --retry-connrefused --post-data "json={\"listen_port\":{{PORT}},\"current_network_interface\":\"{{VPN_INTERFACE}}\",\"random_port\":false,\"upnp\":false}" http://127.0.0.1:8089/api/v2/app/setPreferences'
       #VPN_PORT_FORWARDING_DOWN_COMMAND: /bin/sh -c 'wget -O- --retry-connrefused --post-data "json={\"listen_port\":0,\"current_network_interface\":\"lo\"}" http://127.0.0.1:8089/api/v2/app/setPreferences 2>&1'
       - VPN_PORT_FORWARDING="off"
+      - VPN_PORT_FORWARDING_DOWN_COMMAND=/bin/sh -c 'wget -O- --retry-connrefused --post-data "json={\"listen_port\":0,\"current_network_interface\":\"lo\"}" http://127.0.0.1:8088/api/v2/app/setPreferences 2>&1'
+      - FIREWALL_OUTBOUND_SUBNETS=100.64.0.0/10
+    volumes:
+      - ${DOCKER_VOLUMES}/gluetun-dev/config:/gluetun
+      - ${DOCKER_VOLUMES}/gluetun-dev/wireguard/wg0.conf:/gluetun/wireguard/wg0.conf:ro
+      - ${ZFS_POOL}/servarr/downloads:/downloads
+      - /etc/localtime:/etc/localtime:ro
+    healthcheck:
+      test: ["CMD-SHELL", "wget --quiet --tries=1 --spider http://127.0.0.1:8000/v1/healthcheck || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
   qbt:
+    image: lscr.io/linuxserver/qbittorrent:latest
     container_name: qbt-dev
+    network_mode: service:gluetun # Routes all traffic through VPN
     depends_on:
-      - gluetun
+      gluetun:
+        condition: service_healthy
+        restart: true
     environment:
+      - TZ=America/Los_Angeles
       - WEBUI_PORT=8089
+      - PUID=1000
+      - PGID=1000
     volumes:
       - ${DOCKER_VOLUMES}/qbt-dev/config:/config
+      - ${ZFS_POOL}/servarr/downloads:/downloads
+      - ./scripts/qbt-ensure-localhost-auth-bypass.sh:/custom-cont-init.d/00-localhost-bypass.sh:ro
     healthcheck:
       test: ["CMD", "curl", "--fail", "http://127.0.0.1:8089", "https://google.com"]
       interval: 1m
       retries: 10
+    restart: unless-stopped
 
   jellyfin:
+    image: jellyfin/jellyfin:latest
     container_name: jellyfin-dev
+    restart: unless-stopped
+    labels:
+      test_deploy: "test"
     ports:
-      # Prod binds 8096; dev binds 8097 on the same tailnet IP.
       - "${TAILNET_IP}:8097:8096"
-    volumes:
-      # Separate config dir so dev DB / settings never touch prod.
-      - "${DOCKER_VOLUMES}/jellyfin-dev/config:/config"
-      # Separate cache volume so transcode temp files never collide.
-      - "jellyfin-dev-cache:/cache"
-      # Same media library, but READ-ONLY — dev jellyfin can read media to
-      # verify playback, but cannot write metadata / NFO / images back into
-      # the prod media tree. This is the key safety property of the dev env.
-      - "${SERVARR_DATA}:/data:ro"
-      - "/etc/localtime:/etc/localtime:ro"
     environment:
       TZ: ${TZ:-America/Los_Angeles}
       NVIDIA_VISIBLE_DEVICES: all
       NVIDIA_DRIVER_CAPABILITIES: compute,video,utility
-    # GPU access kept — see file header comment.
+    volumes:
+      - ${DOCKER_VOLUMES}/jellyfin-dev/config:/config
+      - jellyfin-dev-cache:/cache
+      - ${SERVARR_DATA}:/data
+      - /etc/localtime:/etc/localtime:ro
     deploy:
       resources:
         reservations:
