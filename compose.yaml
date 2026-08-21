@@ -41,8 +41,6 @@ services:
       gluetun:
         condition: service_healthy
         restart: true
-    depends_on:
-      - gluetun
     environment:
       - TZ=America/Los_Angeles
       - WEBUI_PORT=8088
