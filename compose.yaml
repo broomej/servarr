@@ -46,7 +46,7 @@ services:
       - PGID=1000
     volumes:
       - ${DOCKER_VOLUMES}/qbt/config:/config
-      - ${ZFS_POOL}/servarr/downloads-dev:/downloads
+      - ${ZFS_POOL}/servarr/downloads:/downloads
     healthcheck:
       test: ["CMD", "curl", "--fail", "http://127.0.0.1:8088", "https://google.com"]
       interval: 1m
