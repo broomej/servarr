@@ -45,7 +45,6 @@ services:
     volumes:
       - ${DOCKER_VOLUMES}/qbt${DEV_FLAG}/config:/config
       - ${ZFS_POOL}/servarr/downloads:/downloads
-      - ./scripts/qbt-ensure-localhost-auth-bypass.sh:/custom-cont-init.d/00-localhost-bypass.sh:ro
     healthcheck:
       test: ["CMD", "curl", "--fail", "http://127.0.0.1:${QBT_WEBUI_PORT}", "https://google.com"]
       interval: 1m
@@ -56,8 +55,6 @@ services:
     image: jellyfin/jellyfin:latest
     container_name: jellyfin${DEV_FLAG}
     restart: unless-stopped
-    labels:
-      test_deploy: "test"
     ports:
       - "${TAILNET_IP}:${JF_PORT}:8096"
     environment:
